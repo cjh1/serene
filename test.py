@@ -19,5 +19,8 @@ def test(arg1, arg2, arg3):
 def create_dataset(id, dataset):
     return "OK"
 
+@serene.delete()
+def delete_dataset(id):
+    return "DELETED"
 
 run(host='localhost' , port=8082)
