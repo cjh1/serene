@@ -59,9 +59,11 @@ class wrapper(object):
 
 # CRUD
 
+
+
 class create(wrapper):
     def __init__(self, path=None):
-        def its_a_wrap(func, *args, **kwargs):
+        def look_in_body(func, *args, **kwargs):
             content = json.loads(request.body.getvalue())
 
             pargs = []
@@ -71,16 +73,33 @@ class create(wrapper):
 
             return func(*pargs)
 
-        super(create, self).__init__("POST", path, its_a_wrap)
-
+        super(create, self).__init__("POST", path, look_in_body)
 
 class read(wrapper):
     def __init__(self, path=None):
         super(read, self).__init__("GET", path)
 
+class update(wrapper):
+    def __init__(self, path=None):
+        def look_in_body(func, *args, **kwargs):
 
-def update(func):
-  return func
+            print kwargs
+
+            pargs = kwargs['path'].split('/')
+            pargs = filter(None, pargs)
+
+            print pargs
+
+            content = json.loads(request.body.getvalue())
+
+            pargs = []
+            (func_args, varargs, keywords, locals) = inspect.getargspec(func)
+            for arg in func_args[len(pargs):]:
+                pargs.append(content[arg])
+
+            return func(*pargs)
+
+        super(update, self).__init__("PUT", path, look_in_body)
 
 class delete(wrapper):
     def __init__(self, path=None):
