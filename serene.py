@@ -1,5 +1,6 @@
 from bottle import route, run, request, abort
 import inspect
+import json
 
 @route('/widgets/<id:int>', method='GET')
 def get_widget(id):
@@ -9,11 +10,10 @@ def get_widget(id):
 def post_widget():
     print request.json
 
-# CRUD
-class read(object):
-    def __init__(self, path=None):
-        print 'here'
+class wrapper(object):
+    def __init__(self, method, path=None):
         self.path = path
+        self.method = method
 
     def __call__(self, func):
         print '__call__'
@@ -38,6 +38,7 @@ class read(object):
 
             return func(*pargs)
 
+        print self.path
 
         if self.path:
             mount_point = self.path
@@ -46,10 +47,47 @@ class read(object):
 
         print "mount: " + mount_point
 
-        route(mount_point + '/<path:re:.*>' , 'GET', its_a_wrap)
+        route(mount_point + '<path:re:.*>' , self.method, its_a_wrap)
 
 
         return func
+
+
+# CRUD
+
+class create(wrapper):
+    def __init__(self, path=None):
+        super(create, self).__init__("POST", path)
+
+    def __call__(self, func):
+
+        (func_args, varargs, keywords, locals) = inspect.getargspec(func)
+
+        def its_a_wrap(*args, **kwargs):
+
+            content = json.loads(request.body.getvalue())
+
+            pargs = []
+
+            for arg in func_args:
+                pargs.append(content[arg])
+
+            return func(*pargs)
+
+        if self.path:
+            mount_point = self.path
+        else:
+            mount_point = '/%s' % func.__name__
+
+        route(mount_point + '<path:re:.*>' , self.method, its_a_wrap)
+
+
+        return func
+
+
+class read(wrapper):
+    def __init__(self, path=None):
+        super(read, self).__init__("GET", path)
 
 
 def update(func):
