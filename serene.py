@@ -1,6 +1,7 @@
 from bottle import route, run, request, abort
 import inspect
 import json
+import functools
 
 @route('/widgets/<id:int>', method='GET')
 def get_widget(id):
@@ -11,24 +12,20 @@ def post_widget():
     print request.json
 
 class wrapper(object):
-    def __init__(self, method, path=None):
+    def __init__(self, method, path=None, wrapper=None):
         self.path = path
         self.method = method
 
-    def __call__(self, func):
-        print '__call__'
-
-        print type(func)
-
-        (func_args, varargs, keywords, locals) = inspect.getargspec(func)
-
-        def its_a_wrap(*args, **kwargs):
-
+        def its_a_wrap(func, *args, **kwargs):
+            print func
             print request.query
             print args
+            print kwargs
             pargs = kwargs['path'].split('/')
             pargs = filter(None, pargs)
 
+
+            (func_args, varargs, keywords, locals) = inspect.getargspec(func)
             for arg in func_args[len(pargs):]:
                 value = request.query[arg]
                 if ',' in value:
@@ -38,7 +35,12 @@ class wrapper(object):
 
             return func(*pargs)
 
-        print self.path
+        if not wrapper:
+            self.wrapper = its_a_wrap
+        else:
+            self.wrapper = wrapper
+
+    def __call__(self, func):
 
         if self.path:
             mount_point = self.path
@@ -47,7 +49,9 @@ class wrapper(object):
 
         print "mount: " + mount_point
 
-        route(mount_point + '<path:re:.*>' , self.method, its_a_wrap)
+        wrap = functools.partial(self.wrapper, func)
+
+        route(mount_point + '<path:re:.*>' , self.method, wrap)
 
 
         return func
@@ -57,32 +61,17 @@ class wrapper(object):
 
 class create(wrapper):
     def __init__(self, path=None):
-        super(create, self).__init__("POST", path)
-
-    def __call__(self, func):
-
-        (func_args, varargs, keywords, locals) = inspect.getargspec(func)
-
-        def its_a_wrap(*args, **kwargs):
-
+        def its_a_wrap(func, *args, **kwargs):
             content = json.loads(request.body.getvalue())
 
             pargs = []
-
+            (func_args, varargs, keywords, locals) = inspect.getargspec(func)
             for arg in func_args:
                 pargs.append(content[arg])
 
             return func(*pargs)
 
-        if self.path:
-            mount_point = self.path
-        else:
-            mount_point = '/%s' % func.__name__
-
-        route(mount_point + '<path:re:.*>' , self.method, its_a_wrap)
-
-
-        return func
+        super(create, self).__init__("POST", path, its_a_wrap)
 
 
 class read(wrapper):
