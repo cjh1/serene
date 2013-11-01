@@ -82,5 +82,6 @@ class read(wrapper):
 def update(func):
   return func
 
-def delete(func):
-  return func
+class delete(wrapper):
+    def __init__(self, path=None):
+        super(delete, self).__init__("DELETE", path)
