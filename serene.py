@@ -2,6 +2,9 @@ from bottle import route, run, request, abort
 import inspect
 import json
 import functools
+import traceback
+from collections import defaultdict
+import json
 
 @route('/widgets/<id:int>', method='GET')
 def get_widget(id):
@@ -11,6 +14,11 @@ def get_widget(id):
 def post_widget():
     print request.json
 
+def tree():
+    return defaultdict(tree)
+
+instance_path_map = {}
+
 class wrapper(object):
     def __init__(self, method, path=None, wrapper=None):
         self.path = path
@@ -18,22 +26,53 @@ class wrapper(object):
 
         def its_a_wrap(func, *args, **kwargs):
             print func
+            print inspect.getargspec(func)
             print request.query
             print args
             print kwargs
-            pargs = kwargs['path'].split('/')
-            pargs = filter(None, pargs)
+            path_components = kwargs['path'].split('/')
+            path_components = filter(None, path_components)
 
+            pargs = []
+            current_func = func
 
-            (func_args, varargs, keywords, locals) = inspect.getargspec(func)
-            for arg in func_args[len(pargs):]:
-                value = request.query[arg]
-                if ',' in value:
-                    value = value.split(',')
+            # Tuples (function, pargs)
+            call_sequence = []
 
-                pargs.append(value)
+            for p in path_components:
+                print "p: " + p
+                if p in instance_path_map:
+                    call_sequence.append((current_func, pargs))
+                    current_func = instance_path_map[p]
+                    pargs = []
+                else:
+                    pargs.append(p)
 
-            return func(*pargs)
+            # add the final call
+            if current_func:
+                call_sequence.append((current_func, pargs))
+
+            result = None
+            try:
+                for (f, args) in call_sequence:
+                    if result:
+                        args.insert(0, result)
+                    result = f(*args)
+            except:
+                print traceback.format_exc()
+
+#             (func_args, varargs, keywords, locals) = inspect.getargspec(func)
+#             for arg in func_args[len(pargs):]:
+#                 print arg
+#                 value = request.query[arg]
+#                 if ',' in value:
+#                     value = value.split(',')
+#
+#                 pargs.append(value)
+
+            print "returning ... " + str(result)
+
+            return result
 
         if not wrapper:
             self.wrapper = its_a_wrap
@@ -47,12 +86,15 @@ class wrapper(object):
         else:
             mount_point = '/%s' % func.__name__
 
+        print func.__name__
         print "mount: " + mount_point
 
         wrap = functools.partial(self.wrapper, func)
 
-        route(mount_point + '<path:re:.*>' , self.method, wrap)
-
+        if not mount_point.startswith('/'):
+            instance_path_map[mount_point] = func
+        else:
+            route(mount_point + '<path:re:.*>' , self.method, wrap)
 
         return func
 
@@ -76,7 +118,7 @@ class create(wrapper):
         super(create, self).__init__("POST", path, look_in_body)
 
 class read(wrapper):
-    def __init__(self, path=None):
+    def __init__(self, path=None, selfish=None):
         super(read, self).__init__("GET", path)
 
 class update(wrapper):
