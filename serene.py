@@ -62,7 +62,8 @@ class wrapper(object):
                 result = current_func(*pargs)
 
 
-            print type(result)
+            if not isinstance(result, str):
+                result = json.dumps(result, default=lambda o: o.__dict__)
 
             return result
 
