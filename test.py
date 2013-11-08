@@ -6,7 +6,7 @@ def create_dataset(id, dataset):
 
 # Return GJSON
 @serene.read(path="/vtk/read")
-def read_vtk(filename, vars, timestep):
+def read_vtk(filename, vars=None, timestep=None):
   return { "type": "FeatureCollection",
   "features": [
     { "type": "Feature",

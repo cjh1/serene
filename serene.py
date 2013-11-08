@@ -20,6 +20,15 @@ def tree():
 instance_path_map = tree()
 func_to_type_map = {}
 
+def extract_query_args(func, pargs):
+    (func_args, varargs, keywords, locals) = inspect.getargspec(func)
+
+    for arg in func_args[len(pargs):]:
+        if arg in request.query:
+            pargs.append(arg)
+
+    return pargs
+
 class wrapper(object):
     def __init__(self, method, path=None, return_type=None, wrapper=None):
         self.path = path
@@ -48,6 +57,9 @@ class wrapper(object):
                     # If we have a match then apply the current function so we
                     # can call the next method on the returned instance
                     if p in instance_path_map[class_context]:
+                        # Fill in the parameter with anything we can extract
+                        # from the query string
+                        pargs = extract_query_args(current_func, pargs)
                         result = current_func(*pargs)
                         pargs = [result]
                         current_func = instance_path_map[class_context][p]
