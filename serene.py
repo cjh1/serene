@@ -17,60 +17,52 @@ def post_widget():
 def tree():
     return defaultdict(tree)
 
-instance_path_map = {}
+instance_path_map = tree()
+func_to_type_map = {}
 
 class wrapper(object):
-    def __init__(self, method, path=None, wrapper=None):
+    def __init__(self, method, path=None, return_type=None, wrapper=None):
         self.path = path
         self.method = method
+        self.return_type = return_type
 
         def its_a_wrap(func, *args, **kwargs):
-            print func
-            print inspect.getargspec(func)
-            print request.query
-            print args
-            print kwargs
+            print func_to_type_map
             path_components = kwargs['path'].split('/')
             path_components = filter(None, path_components)
 
             pargs = []
             current_func = func
 
-            # Tuples (function, pargs)
-            call_sequence = []
-
-            for p in path_components:
-                print "p: " + p
-                if p in instance_path_map:
-                    call_sequence.append((current_func, pargs))
-                    current_func = instance_path_map[p]
-                    pargs = []
-                else:
-                    pargs.append(p)
-
-            # add the final call
-            if current_func:
-                call_sequence.append((current_func, pargs))
-
+            class_context = None
             result = None
-            try:
-                for (f, args) in call_sequence:
-                    if result:
-                        args.insert(0, result)
-                    result = f(*args)
-            except:
-                print traceback.format_exc()
+            for p in path_components:
+                print "p: %s" % p
+                if current_func in func_to_type_map:
+                    class_context = func_to_type_map[current_func]
 
-#             (func_args, varargs, keywords, locals) = inspect.getargspec(func)
-#             for arg in func_args[len(pargs):]:
-#                 print arg
-#                 value = request.query[arg]
-#                 if ',' in value:
-#                     value = value.split(',')
-#
-#                 pargs.append(value)
+                # If we have a class context then look at the next part of the
+                # path as if could be instance method that we need to apply
+                print "class_context: %s" % class_context
+                if class_context in instance_path_map:
+                    # If we have a match then apply the current function so we
+                    # can call the next method on the returned instance
+                    if p in instance_path_map[class_context]:
+                        result = current_func(*pargs)
+                        pargs = [result]
+                        current_func = instance_path_map[class_context][p]
+                        print "New function %s" % current_func.__name__
+                        continue
 
-            print "returning ... " + str(result)
+                pargs.append(p)
+                print "pargs: " + str(pargs)
+
+            print "current_func: %s" % current_func.__name__
+            if current_func:
+                result = current_func(*pargs)
+
+
+            print type(result)
 
             return result
 
@@ -86,15 +78,25 @@ class wrapper(object):
         else:
             mount_point = '/%s' % func.__name__
 
-        print func.__name__
-        print "mount: " + mount_point
+        if self.return_type:
+            func_to_type_map[func] = self.return_type
 
         wrap = functools.partial(self.wrapper, func)
 
         if not mount_point.startswith('/'):
-            instance_path_map[mount_point] = func
+            (func_args, varargs, keywords, locals) = inspect.getargspec(func)
+            first_arg =  func_args[0]
+
+            if first_arg != 'self':
+                raise Exception("paths that don't start with / must be class methods")
+
+            class_name = inspect.getouterframes(inspect.currentframe())[1][3]
+            instance_path_map[class_name] = {mount_point: func}
         else:
             route(mount_point + '<path:re:.*>' , self.method, wrap)
+
+
+        print str(instance_path_map)
 
         return func
 
@@ -118,8 +120,8 @@ class create(wrapper):
         super(create, self).__init__("POST", path, look_in_body)
 
 class read(wrapper):
-    def __init__(self, path=None, selfish=None):
-        super(read, self).__init__("GET", path)
+    def __init__(self, path=None, return_type=None, selfish=None):
+        super(read, self).__init__("GET", path, return_type)
 
 class update(wrapper):
     def __init__(self, path=None):
