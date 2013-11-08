@@ -130,7 +130,7 @@ class create(wrapper):
 
             return func(*pargs)
 
-        super(create, self).__init__("POST", path, look_in_body)
+        super(create, self).__init__("POST", path=path, wrapper=look_in_body)
 
 class read(wrapper):
     def __init__(self, path=None, datatype=None, selfish=None):
@@ -156,8 +156,8 @@ class update(wrapper):
 
             return func(*pargs)
 
-        super(update, self).__init__("PUT", path, look_in_body)
+        super(update, self).__init__("PUT", path=path, wrapper=look_in_body)
 
 class delete(wrapper):
     def __init__(self, path=None):
-        super(delete, self).__init__("DELETE", path)
+        super(delete, self).__init__("DELETE", path=path)
