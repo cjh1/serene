@@ -30,10 +30,10 @@ def extract_query_args(func, pargs):
     return pargs
 
 class wrapper(object):
-    def __init__(self, method, path=None, return_type=None, wrapper=None):
+    def __init__(self, method, path=None, datatype=None, wrapper=None):
         self.path = path
         self.method = method
-        self.return_type = return_type
+        self.datatype = datatype
 
         def its_a_wrap(func, *args, **kwargs):
             print func_to_type_map
@@ -91,8 +91,8 @@ class wrapper(object):
         else:
             mount_point = '/%s' % func.__name__
 
-        if self.return_type:
-            func_to_type_map[func] = self.return_type
+        if self.datatype:
+            func_to_type_map[func] = self.datatype
 
         wrap = functools.partial(self.wrapper, func)
 
@@ -133,8 +133,8 @@ class create(wrapper):
         super(create, self).__init__("POST", path, look_in_body)
 
 class read(wrapper):
-    def __init__(self, path=None, return_type=None, selfish=None):
-        super(read, self).__init__("GET", path, return_type)
+    def __init__(self, path=None, datatype=None, selfish=None):
+        super(read, self).__init__("GET", path, datatype)
 
 class update(wrapper):
     def __init__(self, path=None):

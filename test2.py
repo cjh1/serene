@@ -7,7 +7,7 @@ from bottle import run
 # Access the timestep:
 # /dataset/id/timestep/number
 
-@serene.read(return_type='dataset', path="/dataset")
+@serene.read(datatype='dataset', path="/dataset")
 def get_dataset(id):
     print "in get_dataset"
     return dataset(id)
@@ -30,7 +30,7 @@ class dataset(object):
         print 'get_time'
         return "dataset: "  + self.id + "\ntimestep: " + id + "\n"
 
-    @serene.read(return_type='parameter', path='parameter')
+    @serene.read(datatype='parameter', path='parameter')
     def parameter(self, name):
         return parameter(name)
 
