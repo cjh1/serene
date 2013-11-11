@@ -43,6 +43,7 @@ class dataset(object):
     def __init__(self, id):
         print "in __init__"
         self.id = id
+        self.name = "MyDataSet"
 
     @serene.read(path="get_timestep")
     def get_timestep(self, id):
