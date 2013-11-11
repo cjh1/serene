@@ -1,8 +1,14 @@
 import serene
 from bottle import run
+
+datasets = {}
+
 @serene.create()
-def create_dataset(id, dataset):
-    return "OK"
+def create_dataset(id, name, data):
+    ds = dataset(id, name, data)
+    datasets[id] = ds
+
+    return ds
 
 # Return GJSON
 @serene.read(path="/vtk/read")
@@ -40,10 +46,10 @@ class parameter:
         return id
 
 class dataset(object):
-    def __init__(self, id):
-        print "in __init__"
+    def __init__(self, id, name, data):
         self.id = id
-        self.name = "MyDataSet"
+        self.data = data
+        self.name = name
 
     @serene.read(path="get_timestep")
     def get_timestep(self, id):
