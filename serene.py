@@ -119,7 +119,11 @@ class create(wrapper):
             for arg in func_args:
                 pargs.append(content[arg])
 
-            return func(*pargs)
+            result = func(*pargs)
+            if not isinstance(result, str):
+                result = json.dumps(result, default=lambda o: o.__dict__)
+
+            return result
 
         super(create, self).__init__("POST", path=path, wrapper=look_in_body)
 
