@@ -36,7 +36,6 @@ class wrapper(object):
         self.datatype = datatype
 
         def its_a_wrap(func, *args, **kwargs):
-            print func_to_type_map
             path_components = kwargs['path'].split('/')
             path_components = filter(None, path_components)
 
@@ -46,13 +45,11 @@ class wrapper(object):
             class_context = None
             result = None
             for p in path_components:
-                print "p: %s" % p
                 if current_func in func_to_type_map:
                     class_context = func_to_type_map[current_func]
 
                 # If we have a class context then look at the next part of the
                 # path as if could be instance method that we need to apply
-                print "class_context: %s" % class_context
                 if class_context in instance_path_map:
                     # If we have a match then apply the current function so we
                     # can call the next method on the returned instance
@@ -63,13 +60,10 @@ class wrapper(object):
                         result = current_func(*pargs)
                         pargs = [result]
                         current_func = instance_path_map[class_context][p]
-                        print "New function %s" % current_func.__name__
                         continue
 
                 pargs.append(p)
-                print "pargs: " + str(pargs)
 
-            print "current_func: %s" % current_func.__name__
             if current_func:
                 result = current_func(*pargs)
 
@@ -108,9 +102,6 @@ class wrapper(object):
         else:
             route(mount_point + '<path:re:.*>' , self.method, wrap)
 
-
-        print str(instance_path_map)
-
         return func
 
 
@@ -140,12 +131,8 @@ class update(wrapper):
     def __init__(self, path=None):
         def look_in_body(func, *args, **kwargs):
 
-            print kwargs
-
             pargs = kwargs['path'].split('/')
             pargs = filter(None, pargs)
-
-            print pargs
 
             content = json.loads(request.body.getvalue())
 
