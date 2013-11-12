@@ -37,8 +37,6 @@ def resolve_resource(func, *args, **kwargs):
     if not func in func_to_type_map:
         return None
 
-    print "resolve_resource: " + str(kwargs)
-
     path_components = kwargs['path'].split('/')
     path_components = filter(None, path_components)
 
@@ -68,9 +66,6 @@ def resolve_resource(func, *args, **kwargs):
 
         pargs.append(p)
 
-    print "current_func: " + current_func.__name__
-    print pargs
-
     if current_func:
         result = current_func(*pargs)
 
@@ -94,7 +89,6 @@ class wrapper(object):
             print kwargs
             resource = resolve_resource(func, *args, **kwargs)
 
-            print 'its_a_wrap'
             if request.method == 'GET':
                 if not isinstance(resource, str):
                     response.content_type = "application/json"
