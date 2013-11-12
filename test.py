@@ -8,6 +8,8 @@ def create_dataset(id, name, data):
     ds = dataset(id, name, data)
     datasets[id] = ds
 
+    print datasets
+
     return ds
 
 # Return GJSON
@@ -29,27 +31,41 @@ def delete_dataset(id):
     return "DELETED"
 
 @serene.update()
-def update_dataset(id, updates):
-    return "UPDATED"
+def update_dataset(id, name):
+    dataset = datasets[id]
+    dataset.set_name(name)
+
+    return dataset
 
 @serene.read(datatype='dataset', path="/dataset")
 def get_dataset(id):
-    print "in get_dataset"
-    return dataset(id)
+    print "in get_dataset: " + id
+
+    return datasets[int(id)]
 
 class parameter:
     def __init__(self, name):
         self.name = name
+        self.type = "temp"
 
     @serene.read(path="timestep")
     def timestep(self, id):
         return id
+
+    @serene.update()
+    def set_type(self, type):
+        self.type = type
+
+    @serene.update()
+    def set_name(self, name):
+        self.name = name
 
 class dataset(object):
     def __init__(self, id, name, data):
         self.id = id
         self.data = data
         self.name = name
+        self.parameter = parameter('name')
 
     @serene.read(path="get_timestep")
     def get_timestep(self, id):
@@ -58,6 +74,9 @@ class dataset(object):
 
     @serene.read(datatype='parameter', path='parameter')
     def parameter(self, name):
-        return parameter(name)
+        return self.parameter
+
+    def set_name(self, name):
+        self.name = name
 
 run(reloader=True, host='localhost' , port=8082)
