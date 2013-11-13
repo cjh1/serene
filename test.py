@@ -65,7 +65,7 @@ class dataset(object):
         self.id = id
         self.data = data
         self.name = name
-        self.parameter = parameter('name')
+        self.parameters = {'name': parameter('name') }
 
     @serene.read(path="get_timestep")
     def get_timestep(self, id):
@@ -74,7 +74,19 @@ class dataset(object):
 
     @serene.read(datatype='parameter', path='parameter')
     def parameter(self, name):
-        return self.parameter
+        return self.parameters[name]
+
+    @serene.read(datatype='list(parameter)', path='parameters')
+    def parameters(self):
+        print 'parameters'
+        return self.parameters
+
+
+    @serene.create(path='parameter')
+    def add_parameter(self, name):
+        print 'add_parameter %s ' % name
+        param = parameter(name)
+        self.parameters[name] = param
 
     def set_name(self, name):
         self.name = name

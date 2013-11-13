@@ -5,6 +5,7 @@ import functools
 import traceback
 from collections import defaultdict
 import json
+import sys
 
 @route('/widgets/<id:int>', method='GET')
 def get_widget(id):
@@ -17,9 +18,15 @@ def post_widget():
 def tree():
     return defaultdict(tree)
 
+# class containing contain the method => {mount point: func}
 instance_path_map = tree()
+
+# Function to datatype they are marked to return
 func_to_type_map = {}
+# class name => (member => update function)
 class_to_update_methods = tree()
+# class name => (path => create function)
+class_to_create_methods = tree()
 
 def extract_query_args(func, pargs):
     (func_args, varargs, keywords, locals) = inspect.getargspec(func)
@@ -30,17 +37,17 @@ def extract_query_args(func, pargs):
 
     return pargs
 
-def resolve_resource(func, *args, **kwargs):
-
+def resolve_resource(method, func, *args, **kwargs):
     # If the function doesn't resolve to an instance then return None, so the
     # caller knows
     if not func in func_to_type_map:
-        return None
+        return (None, None)
 
     path_components = kwargs['path'].split('/')
     path_components = filter(None, path_components)
 
     pargs = []
+    spare_args = []
     current_func = func
 
     class_context = None
@@ -52,7 +59,9 @@ def resolve_resource(func, *args, **kwargs):
 
         # If we have a class context then look at the next part of the
         # path as if could be instance method that we need to apply
-        if class_context in instance_path_map:
+
+        if class_context in instance_path_map \
+          and (method != 'POST' or class_context not in class_to_create_methods):
             # If we have a match then apply the current function so we
             # can call the next method on the returned instance
             if p in instance_path_map[class_context]:
@@ -64,12 +73,19 @@ def resolve_resource(func, *args, **kwargs):
                 current_func = instance_path_map[class_context][p]
                 continue
 
-        pargs.append(p)
+
+        tmp_type = func_to_type_map.get(current_func, None)
+
+        if not tmp_type or (p not in class_to_create_methods[tmp_type] and \
+           p not in instance_path_map[tmp_type]):
+            pargs.append(p)
+        else:
+            spare_args.append(p)
 
     if current_func:
         result = current_func(*pargs)
 
-    return result
+    return (result, spare_args)
 
 def find_update_method(cls, member):
     if cls in class_to_update_methods:
@@ -86,8 +102,7 @@ class wrapper(object):
         self.datatype = datatype
 
         def its_a_wrap(func, *args, **kwargs):
-            print kwargs
-            resource = resolve_resource(func, *args, **kwargs)
+            (resource, spare_args) = resolve_resource(request.method, func, *args, **kwargs)
 
             if request.method == 'GET':
                 if not isinstance(resource, str):
@@ -107,6 +122,21 @@ class wrapper(object):
                                 update_func(*pargs)
                 # This is not a decorated instance method so just try and pull
                 # the parameters out of the json body
+                else:
+                    func(**request.json)
+            elif request.method == 'POST':
+                if resource:
+                    if len(spare_args) == 1:
+                        path = spare_args[0]
+                        cls = resource.__class__.__name__
+                        if cls in class_to_create_methods:
+                            methods = class_to_create_methods[cls]
+                            if path in methods:
+                                create_func = methods[path]
+                                kwargs = request.json
+                                create_func(resource, **kwargs)
+                    else:
+                        print >> sys.stderr, "POST request with invalid spare args: %s" % str(spare_args)
                 else:
                     func(**request.json)
 
@@ -134,12 +164,19 @@ class wrapper(object):
                 class_to_update_methods[class_name] = methods
 
             methods[func_args[1]] = func
+        elif self.method == 'POST':
+            class_name = inspect.getouterframes(inspect.currentframe())[1][3]
+            methods = {}
+            if class_name in class_to_create_methods:
+                methods = class_to_create_methods[class_name]
+            else:
+                class_to_create_methods[class_name] = methods
 
-            print class_to_update_methods
+            methods[self.path] = func
 
         wrap = functools.partial(self.wrapper, func)
 
-        if not mount_point.startswith('/'):
+        if not mount_point.startswith('/') and self.method == 'GET':
             (func_args, varargs, keywords, locals) = inspect.getargspec(func)
             first_arg =  func_args[0]
 
@@ -147,13 +184,21 @@ class wrapper(object):
                 raise Exception("paths that don't start with / must be class methods")
 
             class_name = inspect.getouterframes(inspect.currentframe())[1][3]
-            instance_path_map[class_name] = {mount_point: func}
+
+            paths_to_funcs = {}
+            if class_name in instance_path_map:
+                paths_to_funcs = instance_path_map[class_name]
+            else:
+                instance_path_map[class_name] = paths_to_funcs
+
+            paths_to_funcs[mount_point] =  func
+
         else:
-            if self.method == 'POST' or self.method == 'DELETE':
+            if self.method == 'DELETE':
                 route(mount_point + '<path:re:.*>' , self.method, wrap)
             else:
                 #print "mounting: " + mount_point
-                route(mount_point + '<path:re:.*>', ['GET', 'PUT'], wrap)
+                route(mount_point + '<path:re:.*>', ['GET', 'PUT', 'POST'], wrap)
 
         print func
 
