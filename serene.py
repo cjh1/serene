@@ -20,13 +20,17 @@ def tree():
 
 # class containing contain the method => {mount point: func}
 instance_path_map = tree()
-
 # Function to datatype they are marked to return
 func_to_type_map = {}
 # class name => (member => update function)
 class_to_update_methods = tree()
 # class name => (path => create function)
 class_to_create_methods = tree()
+
+mount_points_to_function = {}
+
+func_to_wrapper = {}
+
 
 def extract_query_args(func, pargs):
     (func_args, varargs, keywords, locals) = inspect.getargspec(func)
@@ -146,7 +150,7 @@ class wrapper(object):
             self.wrapper = wrapper
 
     def __call__(self, func):
-
+        self.func = func
         if self.path:
             mount_point = self.path
         else:
@@ -199,8 +203,11 @@ class wrapper(object):
             else:
                 #print "mounting: " + mount_point
                 route(mount_point + '<path:re:.*>', ['GET', 'PUT', 'POST'], wrap)
+            if mount_point.startswith('/'):
+                mount_points_to_function[mount_point] = self
 
-        print func
+        # TODO clean this up can we remove this mapping
+        func_to_wrapper[func] = self
 
         return func
 
@@ -237,3 +244,80 @@ class update(wrapper):
 class delete(wrapper):
     def __init__(self, path=None):
         super(delete, self).__init__("DELETE", path=path)
+
+def args_to_path(func):
+    path = ""
+    (func_args, varargs, keywords, locals) = inspect.getargspec(func)
+    for arg in func_args:
+        if arg == 'self':
+            continue
+        if len(path) > 0 and not path.endswith('/'):
+            path += '/'
+
+        path += "%s/<%s>" % (arg, arg)
+
+    return path
+
+put_endpoints = {}
+
+
+def endpoint_to_doc(current_path, class_name):
+    doc = ""
+    for mount_point, method in instance_path_map[class_name].iteritems():
+        path = "%s/%s" % (current_path, mount_point)
+        path += "/%s" % args_to_path(method)
+
+        doc += "GET %s\n" % path
+
+        if method in func_to_wrapper:
+            if func_to_wrapper[method].datatype:
+                doc += endpoint_to_doc(path, func_to_wrapper[method].datatype)
+
+    for mount_point, method in class_to_update_methods[class_name].iteritems():
+
+        if current_path not in put_endpoints:
+            put_endpoints[current_path] = set()
+
+        (func_args, varargs, keywords, locals) = inspect.getargspec(method)
+        for arg in func_args:
+            if arg == 'self':
+                continue
+            put_endpoints[current_path].add(arg)
+
+        #doc += "PUT %s/%s" % (current_path, mount_point)
+        #doc += "/%s" % args_to_path(method)
+
+    return doc
+
+def generate_doc():
+
+    doc = "Serene generated RESTful API\n\n";
+
+    for key, endpoint in mount_points_to_function.iteritems():
+        # if this read/get endpoint
+        if endpoint.method == 'GET':
+            path = "%s/%s" % (key, args_to_path(endpoint.func))
+            doc += "GET %s\n" % path
+
+            # if we have a datatype defined then look for other mount point that can
+            # be combined with this one.
+            if endpoint.datatype:
+                class_name = endpoint.datatype
+                doc += endpoint_to_doc(path, class_name)
+
+    import pprint
+    import StringIO
+
+    for path, parameters in put_endpoints.iteritems():
+        body = {}
+
+        for p in parameters:
+            body[p] = "<%s>" % p
+
+        doc += "PUT %s\n" % path
+
+        doc += "\n  Message Body:\n"
+        for l in str(json.dumps(body, indent=2)).split('\n'):
+            doc += "    %s\n" % l
+
+    return doc

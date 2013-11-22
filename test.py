@@ -91,4 +91,7 @@ class dataset(object):
     def set_name(self, name):
         self.name = name
 
-run(reloader=True, host='localhost' , port=8082)
+
+print serene.generate_doc()
+
+#run(reloader=True, host='localhost' , port=8082)
