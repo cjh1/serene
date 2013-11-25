@@ -1,5 +1,4 @@
 import serene
-from bottle import run
 
 datasets = {}
 
@@ -91,7 +90,5 @@ class dataset(object):
     def set_name(self, name):
         self.name = name
 
-
-print serene.generate_doc()
 
 #run(reloader=True, host='localhost' , port=8082)
