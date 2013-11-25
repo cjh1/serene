@@ -4,10 +4,9 @@ import json
 import functools
 import traceback
 from collections import defaultdict
-import json
 import sys
-import imp
 import argparse
+import importlib
 
 
 @route('/widgets/<id:int>', method='GET')
@@ -34,7 +33,6 @@ mount_points_to_function = {}
 
 func_to_wrapper = {}
 
-
 def extract_query_args(func, pargs):
     (func_args, varargs, keywords, locals) = inspect.getargspec(func)
 
@@ -60,7 +58,6 @@ def resolve_resource(method, func, *args, **kwargs):
     class_context = None
     result = None
     for p in path_components:
-        print p
         if current_func in func_to_type_map:
             class_context = func_to_type_map[current_func]
 
@@ -153,6 +150,7 @@ class wrapper(object):
             self.wrapper = wrapper
 
     def __call__(self, func):
+
         self.func = func
         if self.path:
             mount_point = self.path
@@ -204,7 +202,6 @@ class wrapper(object):
             if self.method == 'DELETE':
                 route(mount_point + '<path:re:.*>' , self.method, wrap)
             else:
-                #print "mounting: " + mount_point
                 route(mount_point + '<path:re:.*>', ['GET', 'PUT', 'POST'], wrap)
             if mount_point.startswith('/'):
                 mount_points_to_function[mount_point] = self
@@ -362,15 +359,3 @@ def generate_doc():
             doc += "    %s\n" % l
 
     return doc
-
-def main():
-    parser = argparse.ArgumentParser(description='Serene command line.')
-    parser.add_argument('module', metavar='module', type=str,
-                   help='the module to process')
-    args = parser.parse_args()
-    print args.module
-
-
-
-if __name__ == "__main__":
-    main()
