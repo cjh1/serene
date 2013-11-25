@@ -259,7 +259,7 @@ def args_to_path(func):
     return path
 
 put_endpoints = {}
-
+post_endpoints = {}
 
 def endpoint_to_doc(current_path, class_name):
     doc = ""
@@ -284,6 +284,20 @@ def endpoint_to_doc(current_path, class_name):
                 continue
             put_endpoints[current_path].add(arg)
 
+    for mount_point, method in class_to_create_methods[class_name].iteritems():
+        post_point = '%s/%s' % (current_path, mount_point)
+
+        if current_path not in post_endpoints:
+            post_endpoints[post_point] = set()
+
+        (func_args, varargs, keywords, locals) = inspect.getargspec(method)
+        for arg in func_args:
+            if arg == 'self':
+                continue
+            post_endpoints[post_point].add(arg)
+
+
+
         #doc += "PUT %s/%s" % (current_path, mount_point)
         #doc += "/%s" % args_to_path(method)
 
@@ -304,6 +318,18 @@ def generate_doc():
             if endpoint.datatype:
                 class_name = endpoint.datatype
                 doc += endpoint_to_doc(path, class_name)
+        elif endpoint.method == 'POST':
+            doc += "POST /%s\n" % key
+            (func_args, varargs, keywords, locals) = inspect.getargspec(endpoint.func)
+            body = {}
+
+            for p in func_args:
+                body[p] = "<%s>" % p
+
+            doc += "\n  Message Body:\n"
+            for l in str(json.dumps(body, indent=2)).split('\n'):
+                doc += "    %s\n" % l
+
 
     import pprint
     import StringIO
@@ -315,6 +341,18 @@ def generate_doc():
             body[p] = "<%s>" % p
 
         doc += "PUT %s\n" % path
+
+        doc += "\n  Message Body:\n"
+        for l in str(json.dumps(body, indent=2)).split('\n'):
+            doc += "    %s\n" % l
+
+    for path, parameters in post_endpoints.iteritems():
+        body = {}
+
+        for p in parameters:
+            body[p] = "<%s>" % p
+
+        doc += "POST %s\n" % path
 
         doc += "\n  Message Body:\n"
         for l in str(json.dumps(body, indent=2)).split('\n'):
