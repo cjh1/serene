@@ -257,7 +257,10 @@ def endpoint_to_doc(current_path, class_name):
     doc = ""
     for mount_point, method in instance_path_map[class_name].iteritems():
         path = "%s/%s" % (current_path, mount_point)
-        path += "/%s" % args_to_path(method)
+
+        arg_path = args_to_path(method)
+        if arg_path:
+            path += "/%s" % arg_path
 
         docs = inspect.getdoc(method)
 
