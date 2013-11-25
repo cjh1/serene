@@ -267,6 +267,11 @@ def endpoint_to_doc(current_path, class_name):
         path = "%s/%s" % (current_path, mount_point)
         path += "/%s" % args_to_path(method)
 
+        docs = inspect.getdoc(method)
+
+        if docs:
+            doc += "%s\n" % docs
+
         doc += "GET %s\n" % path
 
         if method in func_to_wrapper:

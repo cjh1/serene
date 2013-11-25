@@ -14,7 +14,7 @@ def create_dataset(id, name, data):
 # Return GJSON
 @serene.read(path="/vtk/read")
 def read_vtk(filename, vars=None, timestep=None):
-  return { "type": "FeatureCollection",
+    return { "type": "FeatureCollection",
   "features": [
     { "type": "Feature",
       "geometry": {"type": "Point", "coordinates": [102.0, 0.5]},
@@ -68,7 +68,7 @@ class dataset(object):
 
     @serene.read(path="get_timestep")
     def get_timestep(self, id):
-        print 'get_time'
+        """ Returns timestep for the given id."""
         return "dataset: "  + self.id + "\ntimestep: " + id + "\n"
 
     @serene.read(datatype='parameter', path='parameter')
