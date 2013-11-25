@@ -330,10 +330,6 @@ def generate_doc():
             for l in str(json.dumps(body, indent=2)).split('\n'):
                 doc += "    %s\n" % l
 
-
-    import pprint
-    import StringIO
-
     for path, parameters in put_endpoints.iteritems():
         body = {}
 
