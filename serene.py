@@ -239,13 +239,14 @@ class delete(wrapper):
 def args_to_path(func):
     path = ""
     (func_args, varargs, keywords, locals) = inspect.getargspec(func)
+
     for arg in func_args:
         if arg == 'self':
             continue
         if len(path) > 0 and not path.endswith('/'):
             path += '/'
 
-        path += "%s/<%s>" % (arg, arg)
+        path += "<%s>" % arg
 
     return path
 
