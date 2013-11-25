@@ -319,7 +319,7 @@ def generate_doc():
                 class_name = endpoint.datatype
                 doc += endpoint_to_doc(path, class_name)
         elif endpoint.method == 'POST':
-            doc += "POST /%s\n" % key
+            doc += "POST %s\n" % key
             (func_args, varargs, keywords, locals) = inspect.getargspec(endpoint.func)
             body = {}
 
