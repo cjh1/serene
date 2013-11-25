@@ -8,15 +8,6 @@ import sys
 import argparse
 import importlib
 
-
-@route('/widgets/<id:int>', method='GET')
-def get_widget(id):
-    return {'id': id}
-
-@route('/widgets', method='POST')
-def post_widget():
-    print request.json
-
 def tree():
     return defaultdict(tree)
 
