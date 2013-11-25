@@ -6,6 +6,9 @@ import traceback
 from collections import defaultdict
 import json
 import sys
+import imp
+import argparse
+
 
 @route('/widgets/<id:int>', method='GET')
 def get_widget(id):
@@ -359,3 +362,15 @@ def generate_doc():
             doc += "    %s\n" % l
 
     return doc
+
+def main():
+    parser = argparse.ArgumentParser(description='Serene command line.')
+    parser.add_argument('module', metavar='module', type=str,
+                   help='the module to process')
+    args = parser.parse_args()
+    print args.module
+
+
+
+if __name__ == "__main__":
+    main()
