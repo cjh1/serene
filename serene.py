@@ -2,11 +2,8 @@ from bottle import route, run, request, response, abort
 import inspect
 import json
 import functools
-import traceback
 from collections import defaultdict
 import sys
-import argparse
-import importlib
 
 def tree():
     return defaultdict(tree)
