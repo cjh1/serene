@@ -303,6 +303,16 @@ def endpoint_to_doc(current_path, class_name):
 
     return doc
 
+def dump_body(body_dict, level=4):
+    body = ""
+    for l in str(json.dumps(body_dict, indent=2)).split('\n'):
+        l = l.replace('"<', '<')
+        l = l.replace('>"', '>')
+
+        body += "%s%s\n" % (" "*level, l)
+
+    return body
+
 def generate_doc():
 
     doc = "Serene generated RESTful API\n\n";
@@ -327,8 +337,7 @@ def generate_doc():
                 body[p] = "<%s>" % p
 
             doc += "\n  Message Body:\n"
-            for l in str(json.dumps(body, indent=2)).split('\n'):
-                doc += "    %s\n" % l
+            doc += dump_body(body)
 
     for path, parameters in put_endpoints.iteritems():
         body = {}
@@ -339,8 +348,7 @@ def generate_doc():
         doc += "PUT %s\n" % path
 
         doc += "\n  Message Body:\n"
-        for l in str(json.dumps(body, indent=2)).split('\n'):
-            doc += "    %s\n" % l
+        doc += dump_body(body)
 
     for path, parameters in post_endpoints.iteritems():
         body = {}
@@ -351,7 +359,6 @@ def generate_doc():
         doc += "POST %s\n" % path
 
         doc += "\n  Message Body:\n"
-        for l in str(json.dumps(body, indent=2)).split('\n'):
-            doc += "    %s\n" % l
+        doc += dump_body(body)
 
     return doc
