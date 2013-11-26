@@ -22,7 +22,7 @@ mount_points_to_function = {}
 func_to_wrapper = {}
 
 def extract_query_args(func, pargs):
-    (func_args, varargs, keywords, locals) = inspect.getargspec(func)
+    func_args = inspect.getargspec(func)[0]
 
     for arg in func_args[len(pargs):]:
         if arg in request.query:
@@ -149,7 +149,7 @@ class wrapper(object):
             func_to_type_map[func] = self.datatype
         elif self.method == 'PUT':
             class_name = inspect.getouterframes(inspect.currentframe())[1][3]
-            (func_args, varargs, keywords, locals) = inspect.getargspec(func)
+            func_args = inspect.getargspec(func)[0]
             methods = {}
             if class_name in class_to_update_methods:
                 methods = class_to_update_methods[class_name]
@@ -170,7 +170,7 @@ class wrapper(object):
         wrap = functools.partial(self.wrapper, func)
 
         if not mount_point.startswith('/') and self.method == 'GET':
-            (func_args, varargs, keywords, locals) = inspect.getargspec(func)
+            func_args = inspect.getargspec(func)[0]
             first_arg =  func_args[0]
 
             if first_arg != 'self':
@@ -208,7 +208,7 @@ class create(wrapper):
             content = json.loads(request.body.getvalue())
 
             pargs = []
-            (func_args, varargs, keywords, locals) = inspect.getargspec(func)
+            func_args = inspect.getargspec(func)[0]
             for arg in func_args:
                 pargs.append(content[arg])
 
@@ -235,7 +235,7 @@ class delete(wrapper):
 
 def args_to_path(func):
     path = ""
-    (func_args, varargs, keywords, locals) = inspect.getargspec(func)
+    func_args = inspect.getargspec(func)[0]
 
     for arg in func_args:
         if arg == 'self':
@@ -275,7 +275,7 @@ def endpoint_to_doc(current_path, class_name):
         if current_path not in put_endpoints:
             put_endpoints[current_path] = set()
 
-        (func_args, varargs, keywords, locals) = inspect.getargspec(method)
+        func_args = inspect.getargspec(method)[0]
         for arg in func_args:
             if arg == 'self':
                 continue
@@ -287,7 +287,7 @@ def endpoint_to_doc(current_path, class_name):
         if current_path not in post_endpoints:
             post_endpoints[post_point] = set()
 
-        (func_args, varargs, keywords, locals) = inspect.getargspec(method)
+        func_args = inspect.getargspec(method)[0]
         for arg in func_args:
             if arg == 'self':
                 continue
@@ -327,7 +327,7 @@ def generate_doc():
                 doc += endpoint_to_doc(path, class_name)
         elif endpoint.method == 'POST':
             doc += "POST %s\n" % key
-            (func_args, varargs, keywords, locals) = inspect.getargspec(endpoint.func)
+            func_args = inspect.getargspec(endpoint.func)[0]
             body = {}
 
             for p in func_args:
