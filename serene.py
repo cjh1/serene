@@ -17,6 +17,9 @@ class_to_update_methods = tree()
 # class name => (path => create function)
 class_to_create_methods = tree()
 
+# class name => (path => delete function)
+class_to_delete_methods = tree()
+
 mount_points_to_function = {}
 
 func_to_wrapper = {}
@@ -51,25 +54,29 @@ def resolve_resource(method, func, *args, **kwargs):
 
         # If we have a class context then look at the next part of the
         # path as if could be instance method that we need to apply
-
         if class_context in instance_path_map \
           and (method != 'POST' or class_context not in class_to_create_methods):
             # If we have a match then apply the current function so we
             # can call the next method on the returned instance
-            if p in instance_path_map[class_context]:
+
+            if p in instance_path_map[class_context] and \
+               ( method == 'DELETE' and p not in class_to_delete_methods[class_context] or \
+                 method != 'DELETE' ):
                 # Fill in the parameter with anything we can extract
                 # from the query string
                 pargs = extract_query_args(current_func, pargs)
                 result = current_func(*pargs)
                 pargs = [result]
                 current_func = instance_path_map[class_context][p]
+
                 continue
 
 
         tmp_type = func_to_type_map.get(current_func, None)
+        num_args = len(inspect.getargspec(current_func)[0])
 
-        if not tmp_type or (p not in class_to_create_methods[tmp_type] and \
-           p not in instance_path_map[tmp_type]):
+        if (not tmp_type or (p not in class_to_create_methods[tmp_type] \
+           and p not in instance_path_map[tmp_type])) and len(pargs) < num_args:
             pargs.append(p)
         else:
             spare_args.append(p)
@@ -131,6 +138,18 @@ class wrapper(object):
                         print >> sys.stderr, "POST request with invalid spare args: %s" % str(spare_args)
                 else:
                     func(**request.json)
+            elif request.method == 'DELETE':
+                if resource:
+                    if len(spare_args) >= 1:
+                        path = spare_args[0]
+                        cls = resource.__class__.__name__
+                        if cls in class_to_delete_methods:
+                            methods = class_to_delete_methods[cls]
+                            if path in methods:
+                                delete_func = methods[path]
+                                delete_func(resource, *spare_args[1:])
+                else:
+                    func(spare_args)
 
         if not wrapper:
             self.wrapper = its_a_wrap
@@ -166,6 +185,14 @@ class wrapper(object):
                 class_to_create_methods[class_name] = methods
 
             methods[self.path] = func
+        elif self.method == 'DELETE':
+            class_name = inspect.getouterframes(inspect.currentframe())[1][3]
+            methods = {}
+            if class_name in class_to_delete_methods:
+                methods = class_to_delete_methods[class_name]
+            else:
+                class_to_delete_methods[class_name] = methods
+            methods[self.path] = func
 
         wrap = functools.partial(self.wrapper, func)
 
@@ -187,10 +214,7 @@ class wrapper(object):
             paths_to_funcs[mount_point] =  func
 
         else:
-            if self.method == 'DELETE':
-                route(mount_point + '<path:re:.*>' , self.method, wrap)
-            else:
-                route(mount_point + '<path:re:.*>', ['GET', 'PUT', 'POST'], wrap)
+            route(mount_point + '<path:re:.*>', ['GET', 'PUT', 'POST', 'DELETE'], wrap)
             if mount_point.startswith('/'):
                 mount_points_to_function[mount_point] = self
 
@@ -249,6 +273,7 @@ def args_to_path(func):
 
 put_endpoints = {}
 post_endpoints = {}
+delete_endpoints = {}
 
 def endpoint_to_doc(current_path, class_name):
     doc = ""
@@ -293,8 +318,14 @@ def endpoint_to_doc(current_path, class_name):
                 continue
             post_endpoints[post_point].add(arg)
 
+    for mount_point, method in class_to_delete_methods[class_name].iteritems():
+        delete_point = '%s/%s' % (current_path, mount_point)
+        args = args_to_path(method)
 
+        if args:
+            delete_point += '/%s' % args
 
+        doc += 'DELETE %s\n' % delete_point
         #doc += "PUT %s/%s" % (current_path, mount_point)
         #doc += "/%s" % args_to_path(method)
 
@@ -335,6 +366,13 @@ def generate_doc():
 
             doc += "\n  Message Body:\n"
             doc += dump_body(body)
+        elif endpoint.method == 'DELETE':
+            doc += "DELETE %s" % key
+            arg_path = args_to_path(endpoint.func)
+            if arg_path:
+                doc += "/%s" % arg_path
+            doc +='\n'
+
 
     for path, parameters in put_endpoints.iteritems():
         body = {}

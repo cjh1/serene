@@ -87,6 +87,11 @@ class dataset(object):
         param = parameter(name)
         self.parameters[name] = param
 
+    @serene.delete(path='parameter')
+    def delete_parameter(self, name):
+        if name in self.parameters:
+            del self.parameters[name]
+
     def set_name(self, name):
         self.name = name
 
