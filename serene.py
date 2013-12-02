@@ -20,7 +20,7 @@ class_to_create_methods = tree()
 # class name => (path => delete function)
 class_to_delete_methods = tree()
 
-mount_points_to_function = {}
+mount_points_to_functions = {}
 
 func_to_wrapper = {}
 
@@ -216,7 +216,13 @@ class wrapper(object):
         else:
             route(mount_point + '<path:re:.*>', ['GET', 'PUT', 'POST', 'DELETE'], wrap)
             if mount_point.startswith('/'):
-                mount_points_to_function[mount_point] = self
+                if mount_point in mount_points_to_functions:
+                    functions = mount_points_to_functions[mount_point]
+                else:
+                    functions = set()
+                    mount_points_to_functions[mount_point] = functions
+
+                functions.add(self)
 
         # TODO clean this up can we remove this mapping
         func_to_wrapper[func] = self
@@ -345,34 +351,35 @@ def generate_doc():
 
     doc = "Serene generated RESTful API\n\n";
 
-    for key, endpoint in mount_points_to_function.iteritems():
-        # if this read/get endpoint
-        if endpoint.method == 'GET':
-            path = "%s/%s" % (key, args_to_path(endpoint.func))
-            doc += "GET %s\n" % path
+    for key, endpoints in mount_points_to_functions.iteritems():
 
-            # if we have a datatype defined then look for other mount point that can
-            # be combined with this one.
-            if endpoint.datatype:
-                class_name = endpoint.datatype
-                doc += endpoint_to_doc(path, class_name)
-        elif endpoint.method == 'POST':
-            doc += "POST %s\n" % key
-            func_args = inspect.getargspec(endpoint.func)[0]
-            body = {}
+        for endpoint in endpoints:
+            # if this read/get endpoint
+            if endpoint.method == 'GET':
+                path = "%s/%s" % (key, args_to_path(endpoint.func))
+                doc += "GET %s\n" % path
 
-            for p in func_args:
-                body[p] = "<%s>" % p
+                # if we have a datatype defined then look for other mount point that can
+                # be combined with this one.
+                if endpoint.datatype:
+                    class_name = endpoint.datatype
+                    doc += endpoint_to_doc(path, class_name)
+            elif endpoint.method == 'POST':
+                doc += "POST %s\n" % key
+                func_args = inspect.getargspec(endpoint.func)[0]
+                body = {}
 
-            doc += "\n  Message Body:\n"
-            doc += dump_body(body)
-        elif endpoint.method == 'DELETE':
-            doc += "DELETE %s" % key
-            arg_path = args_to_path(endpoint.func)
-            if arg_path:
-                doc += "/%s" % arg_path
-            doc +='\n'
+                for p in func_args:
+                    body[p] = "<%s>" % p
 
+                doc += "\n  Message Body:\n"
+                doc += dump_body(body)
+            elif endpoint.method == 'DELETE':
+                doc += "DELETE %s" % key
+                arg_path = args_to_path(endpoint.func)
+                if arg_path:
+                    doc += "/%s" % arg_path
+                doc +='\n'
 
     for path, parameters in put_endpoints.iteritems():
         body = {}
