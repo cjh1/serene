@@ -71,7 +71,7 @@ class dataset(object):
         """ Returns timestep for the given id."""
         return "dataset: "  + str(self.id) + "\ntimestep: " + str(id) + "\n"
 
-    @serene.read(datatype='parameter', path='parameter')
+    @serene.read(datatype='parameter', path='parameter', paramloc=['query', 'path'])
     def parameter(self, name):
         return self.parameters[name]
 

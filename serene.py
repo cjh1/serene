@@ -25,13 +25,16 @@ mount_points_to_functions = {}
 func_to_wrapper = {}
 
 def extract_query_args(func, pargs):
+
+    query_args = []
+
     func_args = inspect.getargspec(func)[0]
 
     for arg in func_args[len(pargs):]:
         if arg in request.query:
-            pargs.append(arg)
+            query_args.append(arg)
 
-    return pargs
+    return query_args
 
 def resolve_resource(method, func, *args, **kwargs):
     # If the function doesn't resolve to an instance then return None, so the
@@ -62,9 +65,7 @@ def resolve_resource(method, func, *args, **kwargs):
             if p in instance_path_map[class_context] and \
                ( method == 'DELETE' and p not in class_to_delete_methods[class_context] or \
                  method != 'DELETE' ):
-                # Fill in the parameter with anything we can extract
-                # from the query string
-                pargs = extract_query_args(current_func, pargs)
+
                 result = current_func(*pargs)
                 pargs = [result]
                 current_func = instance_path_map[class_context][p]
@@ -82,6 +83,13 @@ def resolve_resource(method, func, *args, **kwargs):
             spare_args.append(p)
 
     if current_func:
+        # Fill in the parameter with anything we can extract
+        # from the query string
+        paramloc = func_to_wrapper[current_func].paramloc
+
+        if paramloc and (paramloc == 'query' or 'query' in paramloc):
+            pargs += extract_query_args(current_func, pargs)
+
         result = current_func(*pargs)
 
     return (result, spare_args)
@@ -95,10 +103,11 @@ def find_update_method(cls, member):
     return None
 
 class wrapper(object):
-    def __init__(self, method, path=None, datatype=None, wrapper=None):
+    def __init__(self, method, path=None, datatype=None, wrapper=None, paramloc=None):
         self.path = path
         self.method = method
         self.datatype = datatype
+        self.paramloc = paramloc
 
         def its_a_wrap(func, *args, **kwargs):
             (resource, spare_args) = resolve_resource(request.method, func, *args, **kwargs)
@@ -252,8 +261,8 @@ class create(wrapper):
         super(create, self).__init__("POST", path=path, wrapper=look_in_body)
 
 class read(wrapper):
-    def __init__(self, path=None, datatype=None, selfish=None):
-        super(read, self).__init__("GET", path, datatype)
+    def __init__(self, path=None, datatype=None, paramloc='path'):
+        super(read, self).__init__("GET", path, datatype, None, paramloc)
 
 class update(wrapper):
     def __init__(self, path=None):
@@ -277,6 +286,23 @@ def args_to_path(func):
 
     return path
 
+def args_to_query(func):
+    query = ""
+    func_args = inspect.getargspec(func)[0]
+
+    for arg in func_args:
+        if arg == 'self':
+            continue
+
+        if len(query) > 0:
+            query += '&'
+
+        query += "%s=<%s>" % (arg, arg)
+
+    return query
+
+
+
 put_endpoints = {}
 post_endpoints = {}
 delete_endpoints = {}
@@ -295,7 +321,14 @@ def endpoint_to_doc(current_path, class_name):
         if docs:
             doc += "%s\n" % docs
 
-        doc += "GET %s\n" % path
+        paramloc = func_to_wrapper[method].paramloc
+
+        if paramloc and (paramloc == 'path' or 'path' in paramloc):
+            doc += "GET %s\n" % path
+
+        if paramloc and (paramloc == 'query' or 'query' in paramloc):
+            query = args_to_query(method)
+            doc += "GET %s/%s?%s\n" % (current_path, mount_point, query)
 
         if method in func_to_wrapper:
             if func_to_wrapper[method].datatype:
@@ -367,6 +400,7 @@ def generate_doc():
             elif endpoint.method == 'POST':
                 doc += "POST %s\n" % key
                 func_args = inspect.getargspec(endpoint.func)[0]
+
                 body = {}
 
                 for p in func_args:
