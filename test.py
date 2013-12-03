@@ -95,5 +95,9 @@ class dataset(object):
     def set_name(self, name):
         self.name = name
 
+    @serene.read(path='names', paramloc='query')
+    def list_test(self, names):
+        print names
+        return names
 
 #run(reloader=True, host='localhost' , port=8082)
