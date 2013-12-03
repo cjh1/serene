@@ -32,7 +32,7 @@ def extract_query_args(func, pargs):
 
     for arg in func_args[len(pargs):]:
         if arg in request.query:
-            query_args.append(arg)
+            query_args.append(request.query[arg])
 
     return query_args
 
