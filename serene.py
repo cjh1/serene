@@ -4,6 +4,8 @@ import json
 import functools
 from collections import defaultdict
 import sys
+import uuid
+
 
 def tree():
     return defaultdict(tree)
@@ -106,6 +108,18 @@ def find_update_method(cls, member):
 
     return None
 
+# function to convert object to JSON
+def to_json(o):
+    if isinstance(o, uuid.UUID):
+        return str(o)
+    else:
+        d = o.__dict__
+
+        for k in d.keys():
+            if k.startswith('_'):
+                del d[k]
+        return d
+
 class wrapper(object):
     def __init__(self, method, path=None, datatype=None, wrapper=None, paramloc=None):
         self.path = path
@@ -119,7 +133,7 @@ class wrapper(object):
             if request.method == 'GET':
                 if not isinstance(resource, str):
                     response.content_type = "application/json"
-                    resource = json.dumps(resource, default=lambda o: o.__dict__)
+                    resource = json.dumps(resource, default=to_json)
                 return resource
             elif request.method == 'PUT':
 
@@ -258,7 +272,8 @@ class create(wrapper):
             result = func(*pargs)
             if not isinstance(result, str):
                 response.content_type = "application/json"
-                result = json.dumps(result, default=lambda o: o.__dict__)
+
+                result = json.dumps(result, default=to_json)
 
             return result
 
