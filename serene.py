@@ -1,4 +1,4 @@
-from bottle import route, run, request, response, abort
+from bottle import route, run, request, response, abort, HTTPResponse
 import inspect
 import json
 import functools
@@ -74,6 +74,10 @@ def resolve_resource(method, func, *args, **kwargs):
                  method != 'DELETE' ):
 
                 result = current_func(*pargs)
+
+                if not result:
+                    return (None, None)
+
                 pargs = [result]
                 current_func = instance_path_map[class_context][p]
 
@@ -134,7 +138,12 @@ class wrapper(object):
             if request.method == 'GET':
                 if not isinstance(resource, str):
                     response.content_type = "application/json"
-                    resource = json.dumps(resource, default=to_json)
+
+                    if resource:
+                        resource = json.dumps(resource, default=to_json)
+                    else:
+                        resource = HTTPResponse(status=404, body="Resource not found")
+
                 return resource
             elif request.method == 'PUT':
 
