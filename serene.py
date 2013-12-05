@@ -43,13 +43,14 @@ def extract_query_args(func, pargs):
     return query_args
 
 def resolve_resource(method, func, *args, **kwargs):
-    # If the function doesn't resolve to an instance then return None, so the
-    # caller knows
-    if not func in func_to_type_map:
-        return (None, None)
 
     path_components = kwargs['path'].split('/')
     path_components = filter(None, path_components)
+
+    # If the function doesn't resolve to an instance then return None, so the
+    # caller knows
+    if not func in func_to_type_map:
+        return (None, list(args) + path_components)
 
     pargs = []
     spare_args = []
@@ -176,7 +177,7 @@ class wrapper(object):
                                 delete_func = methods[path]
                                 delete_func(resource, *spare_args[1:])
                 else:
-                    func(spare_args)
+                    func(*spare_args)
 
         if not wrapper:
             self.wrapper = its_a_wrap
