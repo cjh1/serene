@@ -185,7 +185,6 @@ class wrapper(object):
             self.wrapper = wrapper
 
     def __call__(self, func):
-
         self.func = func
         if self.path:
             mount_point = self.path
@@ -222,7 +221,7 @@ class wrapper(object):
                 class_to_delete_methods[class_name] = methods
             methods[self.path] = func
 
-        wrap = functools.partial(self.wrapper, func)
+        self.wrap = functools.partial(self.wrapper, func)
 
         if not mount_point.startswith('/') and self.method == 'GET':
             func_args = inspect.getargspec(func)[0]
@@ -242,12 +241,46 @@ class wrapper(object):
             paths_to_funcs[mount_point] =  func
 
         else:
-            route(mount_point + '<path:re:.*>', ['GET', 'PUT', 'POST', 'DELETE'], wrap)
             if mount_point.startswith('/'):
-                if mount_point in mount_points_to_functions:
-                    functions = mount_points_to_functions[mount_point]
+
+                # We bind any GET endpoint to all HTTP methods. If there are other
+                # endpoint that are not GET endpoints already bound we need to rebind
+                # then so the appear in the right order in the routing stack. This is
+                # is what is going on below.
+                functions = mount_points_to_functions.get(mount_point, set())
+
+                if self.method == 'GET':
+
+                    mounted = False
+
+                    for f in functions:
+                        if f.method == 'GET':
+                            mounted = True
+                            break
+
+                    if not mounted:
+                        route(mount_point + '<path:re:.*>', ['GET', 'PUT', 'POST', 'DELETE'], self.wrap)
+                        for f  in functions:
+                            if f.method != 'GET':
+                                if self.path:
+                                    path = self.path
+                                else:
+                                    path = '/%s' % f.func.__name__
+                                route(path + '<path:re:.*>', f.method, f.wrap)
+                    else:
+                        print >> sys.stderr, "GET method already mounted at %s" % mount_point
                 else:
-                    functions = set()
+                    mounted = False
+                    for f in functions:
+                        if f.method == self.method:
+                            mounted = True
+                            break
+                    if not mounted:
+                        route(mount_point + '<path:re:.*>', self.method, self.wrap)
+                    else:
+                        print >> sys.stderr, "%s method already mounted at %s" % (self.method, mount_point)
+
+                if len(functions) == 0:
                     mount_points_to_functions[mount_point] = functions
 
                 functions.add(self)
