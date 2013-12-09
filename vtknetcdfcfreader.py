@@ -9,19 +9,13 @@ class vtkNetCDFCFReader:
     def __init__(self, filename):
         self.id = uuid.uuid1()
 
-        print "self.id: %s" % str(self.id)
-
         self.filename = filename
-        print "before"
         self._reader = vtk.vtkNetCDFCFReader() #get test data
-        print "after"
         self._reader.SphericalCoordinatesOff()
         self._reader.SetOutputTypeToImage()
         self._reader.ReplaceFillValueWithNanOn()
         self._reader.SetFileName(filename)
         self._reader.UpdateInformation()
-
-        print self.__dict__
 
     @serene.read(path='filename')
     def filename(self):
@@ -29,10 +23,6 @@ class vtkNetCDFCFReader:
 
     @serene.read(path='timestep', paramloc='query')
     def read(self, variables, timestep):
-
-        print "self.id: %s" % str(self.id)
-
-        print self.__dict__
 
         #obtain temporal information
         rawTimes = self._reader.GetOutputInformation(0).Get(vtk.vtkStreamingDemandDrivenPipeline.TIME_STEPS())
@@ -101,19 +91,15 @@ def open(filename):
     readers[reader.id] = reader
     return reader
 
-
-
 # These function are only required to support the REST API :-(
 @serene.read(path='/vtkreaders', datatype='vtkNetCDFCFReader')
 def _get_reader(id):
-    print type(id)
     reader = readers.get(uuid.UUID(id), None)
 
     return reader
 
 @serene.delete(path='/vtkreaders')
 def _delete_reader(id):
-    print type(id)
     id = uuid.UUID(id)
     if id in readers:
         del readers[id]
