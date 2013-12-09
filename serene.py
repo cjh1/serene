@@ -118,7 +118,8 @@ def to_json(o):
     if isinstance(o, uuid.UUID):
         return str(o)
     else:
-        d = o.__dict__
+        # We need to make a copy so we don't effect the underlying instance
+        d = o.__dict__.copy()
 
         for k in d.keys():
             if k.startswith('_'):
