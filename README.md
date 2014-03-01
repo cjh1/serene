@@ -20,23 +20,23 @@ So let take a simple example
 
 ```python
 class Foo:
-  def __init__(self, id):
-    self.id = id
-  
-  def id(self):
-    return id
-  
-foos = {}  
+  def __init__(self, bar):
+    self.bar = bar
 
-def create_foo(foo_id):
-  foo = Foo(foo_id)
-  foos[foo_id] = foo
-  
+  def bar(self):
+    return bar
+
+foos = {}
+
+def create_foo(id, bar):
+  foo = Foo(bar)
+  foos[id] = foo
+
   return foo
-  
-def find_foo(foo_id):
-  if foo_id in foos:
-    return foos[foo_id]
+
+def find_foo(id):
+  if id in foos:
+    return foos[id]
   else:
     return None
 
@@ -45,33 +45,71 @@ def find_foo(foo_id):
 So given this simple API we can go ahead and decorate it with serene
 
 ```python
+import serene
+
 class Foo:
-  def __init__(self, id):
-    self.id = id
-  
-  @seren.read(path='id')
-  def id(self):
-    return id
-  
-foos = {}  
+  def __init__(self, bar):
+    self.bar = bar
+
+  @serene.read(path='bar')
+  def bar(self):
+    return bar
+
+foos = {}
 
 @serene.create(path='/foo')
-def create_foo(foo_id):
-  foo = Foo(foo_id)
-  foos[foo_id] = foo
-  
+def create_foo(id, bar):
+  foo = Foo(bar)
+  foos[id] = foo
+
   return foo
-  
-@serene.read(path='/foo, datatype='Foo')  
-def find_foo(foo_id):
-  if foo_id in foos:
-    return foos[foo_id]
+
+@serene.read(path='/foo', datatype='Foo')
+def find_foo(id):
+  if id in foos:
+    return foos[id]
   else:
     return None
 
 ```
+We can now look at the RESTful API the serene will generate for us
 
+```bash
+$ python serenecl.py --doc foo
 
+Serene generated RESTful API
+
+GET /foo/<id>
+GET /foo/<id>/bar
+POST /foo
+
+  Message Body:
+    {
+      "bar": <bar>, 
+      "id": <id>
+    }
+
+```
+
+So we can see that we can create a Foo using a POST request to /foo passing a JSON message as the body containing the id. We can then lookup a Foo using a GET request to /foo/<id> and finally we can access bar field of a Foo using a GET request to /foo/<id>/bar.
+
+So we can now run the foo module in serene's server mode
+
+```bash
+$ python serenecl.py --server foo
+Bottle v0.12-dev server starting up (using WSGIRefServer())...
+Listening on http://localhost:8082/
+Hit Ctrl-C to quit.
+
+```
+
+This starts a web server based on bottle.py that will now server our REST API. 
+
+So we can create a Foo
+
+```bash
+$ curl -X POST --data '{"id":1, "bar": "bar bar black sheep"}' http://localhost:8082/foo
+```
 
 
 #### serenecl
