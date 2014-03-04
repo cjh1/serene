@@ -97,8 +97,8 @@ POST /foo
 So we can see that we now have the following operation
 
 * Creating a Foo - POST request to /foo passing a JSON message as the body containing the id.
-* Lookup a Foo - GET request to /foo/<id> 
-* Access bar field of a Foo  - GET request to /foo/<id>/bar.
+* Lookup a Foo - GET request to /foo/&lt;id&gt; 
+* Access bar field of a Foo  - GET request to /foo/&lt;id&gt;/bar.
 
 So we can now run the foo module in serene's server mode
 
