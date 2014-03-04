@@ -3,11 +3,11 @@ serene - RESTful Python APIs
 
 #### Motivation
 
-serene is designed to allow the user to expose a Python API through a RESTful endpoint with the minium of code changes. The idea is that if your API is well designed it should be a pretty mechanicial process to convert it to a RESTful API, serene takes care of this for you. It allow you to have two API for the price one, a Python API that can be called locally and RESTful API for client/server mode.
+serene is designed to allow the user to expose a Python API as RESTful API with the minium of code changes. The idea is that if your API is well designed it should be a pretty mechanicial process to convert it to a RESTful API, serene takes care of this for you. It allow you to have two API for the price one, a Python API that can be called locally and a RESTful API for client/server mode.
 
 #### How it works
 
-serene provides a set of decorators that are using to tag the functions on your API and define how are they are to be exposed. There are four decorators the corrispond to the basic CRUD operations.
+serene provides a set of decorators that are using to tag the functions on your API and define how are they are to be exposed. There are four decorators that correspond to the basic CRUD operations.
 
 ```python
 @serene.create
@@ -42,7 +42,7 @@ def find_foo(id):
 
 ```
 
-So given this simple API we can go ahead and decorate it with serene
+Given this simple API we can go ahead and decorate it with serene
 
 ```python
 import serene
@@ -72,7 +72,10 @@ def find_foo(id):
     return None
 
 ```
-We can now look at the RESTful API the serene will generate for us
+
+The path parameter is used to specify the path or sub-path the function should be exposed on. The datatype parameter is used to specify the return type of a read operation, this is necessary as this can't be derived from the signature of the function.
+
+We can now look at the RESTful API that serene will generate for us.
 
 ```bash
 $ python serenecl.py --doc foo
@@ -91,7 +94,11 @@ POST /foo
 
 ```
 
-So we can see that we can create a Foo using a POST request to /foo passing a JSON message as the body containing the id. We can then lookup a Foo using a GET request to /foo/<id> and finally we can access bar field of a Foo using a GET request to /foo/<id>/bar.
+So we can see that we now have the following operation
+
+* Creating a Foo - POST request to /foo passing a JSON message as the body containing the id.
+* Lookup a Foo - GET request to /foo/<id> 
+* Access bar field of a Foo  - GET request to /foo/<id>/bar.
 
 So we can now run the foo module in serene's server mode
 
@@ -105,16 +112,11 @@ Hit Ctrl-C to quit.
 
 This starts a web server based on bottle.py that will now server our REST API. 
 
-So we can create a Foo
+So we can now hit the endpoints using curl, for example.
 
 ```bash
 $ curl -X POST --data '{"id":1, "bar": "bar bar black sheep"}' http://localhost:8082/foo
 ```
-
-
-#### serenecl
-
-serencecl is commandline tool that take a decortated module and can either produce documentation descripting the RESTful interface that will be exposed or expose it using bottle.py
 
 
 
